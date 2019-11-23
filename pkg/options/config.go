@@ -2,15 +2,11 @@ package options
 
 import (
 	"encoding/base64"
+	yaml "gopkg.in/yaml.v2"
+	"io/ioutil"
 	"net/http"
 	"time"
 )
-
-type config struct {
-	Core    *ConfigCore `yaml:"core"`
-	Host    *ConfigHost `yaml:"host"`
-	Scripts []*ConfigScript   `yaml:"scripts"`
-}
 
 // ConfigCore базовые настройки теста
 type ConfigCore struct {
@@ -110,11 +106,11 @@ type ConfigRequest struct {
 
 func (c *ConfigRequest) UnmarshalYAML(unmarshal func(interface{}) error) (e error) {
 	var tc struct {
-		Resource string          `yaml:"resource"`
-		Method   string          `yaml:"method,omitempty"`
-		Body     string          `yaml:"body,omitempty"`
-		Rate     int             `yamle:"rate,omitempty"`
-		Header   []headerEntry   `yaml:"header,omitempty"`
+		Resource string        `yaml:"resource"`
+		Method   string        `yaml:"method,omitempty"`
+		Body     string        `yaml:"body,omitempty"`
+		Rate     int           `yamle:"rate,omitempty"`
+		Header   []headerEntry `yaml:"header,omitempty"`
 	}
 	e = nil
 
@@ -147,4 +143,21 @@ func MergeHttpHeaders(headers ...http.Header) http.Header {
 		}
 	}
 	return h
+}
+
+// Непосредственно про чтение конфига
+
+// LoadConfig глобальные настройки конфигурации
+var HopeConfig struct {
+	Core    *ConfigCore     `yaml:"core"`
+	Host    *ConfigHost     `yaml:"host"`
+	Scripts []*ConfigScript `yaml:"scripts"`
+}
+
+func LoadConfigFromFile(filename string) error {
+	data, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+	return yaml.Unmarshal(data, &HopeConfig)
 }
