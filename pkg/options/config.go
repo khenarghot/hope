@@ -2,6 +2,7 @@ package options
 
 import (
 	"encoding/base64"
+	"fmt"
 	yaml "gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net/http"
@@ -47,6 +48,22 @@ type ConfigHost struct {
 	Port     int         `yaml:"port"`
 	Protocol string      `yaml:"protocol"`
 	Header   http.Header `yaml:"header"`
+}
+
+func (c *ConfigHost) GetUrlFor(r *ConfigRequest) string {
+	ssl := false
+	url := "http://"
+	if c.Protocol == "https" || c.Protocol == "https2" {
+		ssl = true
+		url = "https://"
+	}
+	if (!ssl && c.Port == 80) || (ssl && c.Port == 443) {
+		url += c.Address
+	} else {
+		url += fmt.Sprintf("%s:%d", c.Address, c.Port)
+	}
+	url += r.Resource
+	return url
 }
 
 func (c *ConfigHost) UnmarshalYaml(unmarshal func(interface{}) error) error {

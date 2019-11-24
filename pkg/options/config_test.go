@@ -3,8 +3,8 @@ package options
 import (
 	"bytes"
 	yaml "gopkg.in/yaml.v2"
-	"testing"
 	"net/http"
+	"testing"
 )
 
 var headerConfig = []byte(`
@@ -153,5 +153,25 @@ func TestMergeHttpHedaers(t *testing.T) {
 	}
 	if final.Get("X-BEST-BEFORE") != "today" {
 		t.Errorf("Wrong X-BEST-BEFORE: %s", final.Get("X-BEST-BEFORE"))
-	}		
+	}
+}
+
+func TestConfigRequestToURL(t *testing.T) {
+	h80 := &ConfigHost{"127.0.0.1", 80, "http", nil}
+	h443 := &ConfigHost{"localhost", 443, "https", nil}
+	h8080 := &ConfigHost{"localhost", 8080, "https", nil}
+	r1 := &ConfigRequest{"/someresid", "GET", nil, 10, nil}
+
+	url80 := h80.GetUrlFor(r1)
+	if url80 != "http://127.0.0.1/someresid" {
+		t.Errorf("Wrong http url: %s", url80)
+	}
+	url443 := h443.GetUrlFor(r1)
+	if url443 != "https://localhost/someresid" {
+		t.Errorf("Wrong https url: %s", url443)
+	}
+	url8080 := h8080.GetUrlFor(r1)
+	if url8080 != "https://localhost:8080/someresid" {
+		t.Errorf("Wrong https on port 8080: %s", url8080)
+	}
 }
