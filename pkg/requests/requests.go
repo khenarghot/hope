@@ -9,12 +9,13 @@ import (
 type Request struct {
 	http.Request
 	http.Header
-	H2   bool
 	Body []byte
 	Rate int
 }
 
-func NewRequest(url string, method string, http2 bool, header http.Header,
+type RequestGenerator func() *Request
+
+func NewRequest(url string, method string, header http.Header,
 	body []byte, rate int) (*Request, error) {
 	r := new(Request)
 	if hr, e := http.NewRequest(method, url, nil); e == nil {
@@ -22,20 +23,18 @@ func NewRequest(url string, method string, http2 bool, header http.Header,
 	} else {
 		return nil, e
 	}
-	
+
 	// deep copy of the Header
 	r.Header = make(http.Header, len(header))
 	for k, s := range header {
 		r.Header[k] = append([]string(nil), s...)
 	}
-
-	r.H2 = http2
 	r.Rate = rate
 
 	return r, nil
 }
 
-func NewRequestGenerator(s [][]*Request) func() *Request {
+func NewRequestGenerator(s [][]*Request) RequestGenerator {
 	scripts := s
 	sid := 0
 	rid := 0
