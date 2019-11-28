@@ -1,9 +1,6 @@
 package requests
 
 import (
-	"crypto/tls"
-	op "github.com/khenarghot/hope/pkg/options"
-	"golang.org/x/net/http2"
 	"net/http"
 	"sync"
 	"time"
@@ -12,61 +9,65 @@ import (
 // Интерфейс для реализации запуска зададчи
 type Work interface {
 	Run()
+	Init()
 	Stop()
-	Finish()
 }
 
 // Task описание задаваемой нагрузки получаемый из конфигурации
 type Task struct {
+	Collector
 	*http.Client
-	// unused: fix it
-	*http.Transport
-	H2          bool
 	Requests    [][]*Request
 	QPS         float64
 	Workers     int
 	NumRequests int
-	Host        string
-	Timeout     time.Duration
 
-	results chan *result
+	started bool
 	stop    chan interface{}
+	wg      sync.WaitGroup
+}
+
+func NewTask(c Collector, rt http.RoundTripper, requests [][]*Request,
+	qps float64, w, r int, timeout time.Duration) *Task {
+	ts := &Task{
+		Collector: c,
+		Client: &http.Client{
+			Transport: rt,
+			Timeout:   timeout,
+		},
+		Requests:    requests,
+		QPS:         qps,
+		Workers:     w,
+		NumRequests: r,
+		started:     false,
+		stop:        make(chan interface{}),
+	}
+	ts.Client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+
+	return ts
+}
+
+func (t *Task) Init() {
+	t.Collector.Start()
 }
 
 func (t *Task) Stop() {
+	if !t.started {
+		return
+	}
+
 	for i := 0; i < t.Workers; i++ {
 		t.stop <- nil
 	}
+	t.wg.Wait()
+	t.Collector.Stop()
 }
 
-func (t *Task) runWorks() {
-	var wg sync.WaitGroup
-	wg.Add(t.Workers)
-
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-			ServerName:         t.Host,
-		},
-		MaxIdleConnsPerHost: min(t.Workers, op.HopeConfig.Core.Connections),
-		DisableCompression:  true,
-		DisableKeepAlives:   true,
-		Proxy:               nil,
-	}
-
-	if t.H2 {
-		http2.ConfigureTransport(tr)
-	} else {
-		tr.TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
-	}
-	t.Client = &http.Client{
-		Transport: tr,
-		Timeout:   t.Timeout,
-	}
-
-	t.Client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
-		return http.ErrUseLastResponse
-	}
+func (t *Task) Run() {
+	t.wg.Add(t.Workers)
+	t.started = true
 
 	var i int
 	whole := t.NumRequests / t.Workers
@@ -74,13 +75,13 @@ func (t *Task) runWorks() {
 		wrk := &worker{t, whole, NewRequestGenerator(t.Requests)}
 		go func() {
 			wrk.runWorkerLoop()
-			wg.Done()
+			t.wg.Done()
 		}()
 	}
 	wrk := &worker{t, whole + t.NumRequests%t.Workers, NewRequestGenerator(t.Requests)}
 	go func() {
 		wrk.runWorkerLoop()
-		wg.Done()
+		t.wg.Done()
 	}()
 }
 

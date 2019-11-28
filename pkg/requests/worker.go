@@ -6,15 +6,6 @@ import (
 	"time"
 )
 
-// Вынести в отдельный файл
-type result struct {
-	Error      error
-	StatusCode int
-	Start      time.Time
-	Duration   time.Duration
-	Sum        []byte
-}
-
 type worker struct {
 	*Task
 	numRequests int
@@ -30,20 +21,20 @@ func (w *worker) singleRequest(r *Request) error {
 	mds := md5.New()
 
 	if e != nil {
-		w.Task.results <- &result{e, 0, s, t.Sub(s), nil}
+		w.Task.Collector.Add(&Meshure{e, 0, s, t.Sub(s), nil})
 		return e
 	}
 
 	if n, e := io.CopyN(mds, resp.Body, resp.ContentLength); e != nil || n != resp.ContentLength {
-		w.Task.results <- &result{e, resp.StatusCode, s, t.Sub(s), nil}
+		w.Task.Collector.Add(&Meshure{e, resp.StatusCode, s, t.Sub(s), nil})
 		return e
 	}
 
-	w.Task.results <- &result{nil,
+	w.Task.Collector.Add(&Meshure{nil,
 		resp.StatusCode,
 		s,
 		t.Sub(s),
-		mds.Sum(nil)}
+		mds.Sum(nil)})
 	return nil
 }
 

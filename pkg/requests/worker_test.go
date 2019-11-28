@@ -1,12 +1,8 @@
 package requests
 
 import (
-	"bytes"
-	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
-	"sync"
 	"testing"
 	"time"
 )
@@ -18,49 +14,18 @@ func TestSingleRequest(t *testing.T) {
 				w.Write([]byte("WWF\n"))
 			}))
 	defer ts.Close()
-	respHash, _ := hex.DecodeString("8efb81886a9b466e3913dedbc1c79fb0")
 
-	up, e := url.Parse(ts.URL)
-	if e != nil {
-		t.Errorf("Parsing test error")
-	}
+	task := NewTask(NewDefaultCollectot(), ts.Client().Transport, nil,
+		0, 1, 10, time.Second)
 
-	task := &Task{
-		Client:      ts.Client(),
-		Transport:   nil,
-		Requests:    nil,
-		QPS:         0,
-		Workers:     1,
-		NumRequests: 10,
-		Host:        up.Host,
-		Timeout:     time.Second,
-
-		results: make(chan *result),
-		stop:    make(chan interface{}),
-	}
+	// Запускаем коллектор в ручную
+	task.Collector.Start()
 
 	wrk := &worker{
 		Task:        task,
 		numRequests: 10,
 		nextRequest: nil,
 	}
-
-	donech := make(chan interface{})
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case r := <-task.results:
-				if bytes.Compare(r.Sum, respHash) != 0 {
-					t.Errorf("Wrong response hash")
-				}
-			case <-donech:
-				return
-			}
-		}
-	}()
 
 	req, e := NewRequest(ts.URL, "GET", nil, nil, 1)
 	if e != nil {
@@ -70,8 +35,8 @@ func TestSingleRequest(t *testing.T) {
 	if e := wrk.singleRequest(req); e != nil {
 		t.Errorf("Filed to exexcute test request: %s", e.Error())
 	}
-	donech <- nil
-	wg.Wait()
+
+	task.Collector.Stop()
 }
 
 func TestRunWorkerLoop(t *testing.T) {
@@ -82,12 +47,6 @@ func TestRunWorkerLoop(t *testing.T) {
 				w.Write([]byte("Ok"))
 			}))
 	defer ts.Close()
-
-	// Для получение порта и адреса
-	up, e := url.Parse(ts.URL)
-	if e != nil {
-		t.Errorf("Parsing test error")
-	}
 
 	// Враппер для красивого вызова
 	getRequest := func(url string, method string, header http.Header,
@@ -100,42 +59,17 @@ func TestRunWorkerLoop(t *testing.T) {
 
 	}
 
-	// Вручную создаём  задачу
-	task := &Task{
-		Client:    ts.Client(),
-		Transport: nil,
-		Requests: [][]*Request{{
-			getRequest("/first", "GET", nil, nil, 1),
-			getRequest("/second", "GET", nil, nil, 2)}, {
-			getRequest("/一", "GET", nil, nil, 1),
-			getRequest("/二", "GET", nil, nil, 2)}},
-		QPS:         0,
-		Workers:     2,
-		NumRequests: 10,
-		Host:        up.Host,
-		Timeout:     time.Second,
+	clt := NewDefaultCollectot()
+	requests := [][]*Request{{
+		getRequest("/first", "GET", nil, nil, 1),
+		getRequest("/second", "GET", nil, nil, 2)}, {
+		getRequest("/一", "GET", nil, nil, 1),
+		getRequest("/二", "GET", nil, nil, 2)}}
+	task := NewTask(clt, ts.Client().Transport, requests,
+		0, 2, 10, time.Second)
 
-		results: make(chan *result),
-		stop:    make(chan interface{}),
-	}
-
-	// Создадим сборщик статистики
-	var responseCount int = 0
-	var wg sync.WaitGroup
-	wg.Add(1)
-	doneChan := make(chan interface{})
-	// Функция сбора ответов
-	go func() {
-		defer wg.Done()
-		for {
-			select {
-			case <-task.results:
-				responseCount += 1
-			case <-doneChan:
-				return
-			}
-		}
-	}()
+	// Запускаем коллектора. В норме через Init
+	task.Collector.Start()
 
 	// Создадим одного работника с пятью запросами
 	wrk := &worker{
@@ -146,10 +80,9 @@ func TestRunWorkerLoop(t *testing.T) {
 
 	wrk.runWorkerLoop()
 
-	doneChan <- nil
-	wg.Wait()
+	task.Collector.Stop()
 
-	if responseCount != 5 {
-		t.Errorf("Wrong number of response: %d", responseCount)
+	if clt.Count != 5 {
+		t.Errorf("Wrong number of response: %d", clt.Count)
 	}
 }
