@@ -62,6 +62,38 @@ func TestConfigRequest(t *testing.T) {
 	}
 }
 
+var requestConfigPartial = []byte(`
+resource: /hls/CH_UFCHD_HLS/master.m3u8
+header:
+    - name: X-TYPE
+      value: Test
+`)
+
+func TestConfigRequestPartial(t *testing.T) {
+	cfg := ConfigRequest{}
+
+	if err := yaml.Unmarshal(requestConfigPartial, &cfg); err != nil {
+		t.Errorf("Can't unmarsha cfg: %s", err.Error())
+	}
+
+	if cfg.Resource != "/hls/CH_UFCHD_HLS/master.m3u8" {
+		t.Errorf("Wrong resource '%s'", cfg.Resource)
+	}
+	if cfg.Method != "GET" {
+		t.Errorf("Wrong method '%s'", cfg.Method)
+	}
+	if cfg.Body != nil {
+		t.Errorf("Wrong body %v", cfg.Body)
+	}
+	if cfg.Rate != 1 {
+		t.Errorf("Wrong rate")
+	}
+	if cfg.Header.Get("X-TYPE") != "Test" {
+		t.Errorf("Wrong header")
+	}
+}
+
+
 var scriptConfig = []byte(`
 name: 631e8c62-419e-46a2-b6cc-c3862c150843
 header:

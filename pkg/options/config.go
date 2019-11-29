@@ -9,19 +9,50 @@ import (
 	"time"
 )
 
+// HopeConfig настройки приложения
+var HopeConfig struct {
+	Core    *ConfigCore     `yaml:"core"`
+	Host    *ConfigHost     `yaml:"host"`
+	Scripts []*ConfigScript `yaml:"scripts"`
+}
+
 // ConfigCore базовые настройки теста
 type ConfigCore struct {
-	Thread      int           `yaml:"threads"`
-	Connections int           `yaml:"threads"`
-	Duration    time.Duration `yaml:"duration"`
+	Workers  int           `yaml:"workers"`
+	Requests int           `yaml:"connections"`
+	Duration time.Duration `yaml:"duration"`
+}
+
+// ConfigHost описание обстреливаемого сервера
+type ConfigHost struct {
+	Address  string      `yaml:"addr"`
+	Port     int         `yaml:"port"`
+	Protocol string      `yaml:"protocol"`
+	Header   http.Header `yaml:"header"`
+}
+
+// ConfigScript сценарий для нагрузки
+type ConfigScript struct {
+	Name     string          `yaml:"name"`
+	Header   http.Header     `yaml:"header,omitempty"`
+	Requests []ConfigRequest `yaml:"requests"`
+}
+
+// ConfigRequest Запрс исполняемый на севере
+type ConfigRequest struct {
+	Resource string      `yaml:"resource"`
+	Method   string      `yaml:"method,omitempty"`
+	Body     []byte      `yaml:"body,omitempty"`
+	Rate     int         `yamle:"rate,omitempty"`
+	Header   http.Header `yaml:"header,omitempty"`
 }
 
 // Реализация десириализации коры
 func (c *ConfigCore) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var tc struct {
-		Thread      int    `yaml:"threads"`
-		Connections int    `yaml:"connections"`
-		Duration    string `yaml:"duration"`
+		Workers  int    `yaml:"workers"`
+		Requests int    `yaml:"requests"`
+		Duration string `yaml:"duration"`
 	}
 	var e error
 
@@ -32,8 +63,8 @@ func (c *ConfigCore) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	if c.Duration, e = time.ParseDuration(tc.Duration); e != nil {
 		return e
 	}
-	c.Thread = tc.Thread
-	c.Connections = tc.Connections
+	c.Workers = tc.Workers
+	c.Requests = tc.Requests
 
 	return nil
 }
@@ -41,13 +72,6 @@ func (c *ConfigCore) UnmarshalYAML(unmarshal func(interface{}) error) error {
 type headerEntry struct {
 	Name  string `yaml:"name"`
 	Value string `yaml:"value"`
-}
-
-type ConfigHost struct {
-	Address  string      `yaml:"addr"`
-	Port     int         `yaml:"port"`
-	Protocol string      `yaml:"protocol"`
-	Header   http.Header `yaml:"header"`
 }
 
 func (c *ConfigHost) GetUrlFor(r *ConfigRequest) string {
@@ -69,10 +93,13 @@ func (c *ConfigHost) GetUrlFor(r *ConfigRequest) string {
 func (c *ConfigHost) UnmarshalYaml(unmarshal func(interface{}) error) error {
 	var tc struct {
 		Address  string        `yaml:"addr"`
-		Port     int           `yaml:"port"`
-		Protocol string        `yaml:"protocol"`
+		Port     int           `yaml:"port,omitempty"`
+		Protocol string        `yaml:"protocol,omitempty"`
 		Header   []headerEntry `yaml:"header,omitempty"`
 	}
+
+	tc.Port = 80
+	tc.Protocol = "HTTP"
 
 	if e := unmarshal(&tc); e != nil {
 		return e
@@ -86,12 +113,6 @@ func (c *ConfigHost) UnmarshalYaml(unmarshal func(interface{}) error) error {
 		c.Header.Add(ent.Name, ent.Value)
 	}
 	return nil
-}
-
-type ConfigScript struct {
-	Name     string          `yaml:"name"`
-	Header   http.Header     `yaml:"header,omitempty"`
-	Requests []ConfigRequest `yaml:"requests"`
 }
 
 func (c *ConfigScript) UnmarshalYAML(unmarshal func(interface{}) error) error {
@@ -113,14 +134,6 @@ func (c *ConfigScript) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-type ConfigRequest struct {
-	Resource string      `yaml:"resource"`
-	Method   string      `yaml:"method,omitempty"`
-	Body     []byte      `yaml:"body,omitempty"`
-	Rate     int         `yamle:"rate,omitempty"`
-	Header   http.Header `yaml:"header,omitempty"`
-}
-
 func (c *ConfigRequest) UnmarshalYAML(unmarshal func(interface{}) error) (e error) {
 	var tc struct {
 		Resource string        `yaml:"resource"`
@@ -130,6 +143,8 @@ func (c *ConfigRequest) UnmarshalYAML(unmarshal func(interface{}) error) (e erro
 		Header   []headerEntry `yaml:"header,omitempty"`
 	}
 	e = nil
+	tc.Method = "GET"
+	tc.Rate = 1
 
 	if e = unmarshal(&tc); e != nil {
 		return
@@ -137,8 +152,10 @@ func (c *ConfigRequest) UnmarshalYAML(unmarshal func(interface{}) error) (e erro
 
 	c.Resource = tc.Resource
 	c.Method = tc.Method
-	if c.Body, e = base64.StdEncoding.DecodeString(tc.Body); e != nil {
-		return
+	if tc.Body != "" {
+		if c.Body, e = base64.StdEncoding.DecodeString(tc.Body); e != nil {
+			return
+		}
 	}
 	c.Rate = tc.Rate
 	c.Header = make(http.Header)
@@ -165,11 +182,6 @@ func MergeHttpHeaders(headers ...http.Header) http.Header {
 // Непосредственно про чтение конфига
 
 // LoadConfig глобальные настройки конфигурации
-var HopeConfig struct {
-	Core    *ConfigCore     `yaml:"core"`
-	Host    *ConfigHost     `yaml:"host"`
-	Scripts []*ConfigScript `yaml:"scripts"`
-}
 
 func LoadConfigFromFile(filename string) error {
 	data, err := ioutil.ReadFile(filename)
