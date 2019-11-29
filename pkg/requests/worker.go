@@ -46,7 +46,7 @@ func (w *worker) runWorkerLoop() {
 		throttle = time.Tick(time.Duration(1e6/(qps)) * time.Microsecond)
 	}
 
-	for i := 0; i < w.numRequests; i++ {
+	for i := 0; w.numRequests < 0 || i < w.numRequests; i++ {
 		select {
 		case <-w.Task.stop:
 			return

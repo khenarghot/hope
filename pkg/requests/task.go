@@ -70,15 +70,21 @@ func (t *Task) Run() {
 	t.started = true
 
 	var i int
-	whole := t.NumRequests / t.Workers
+	regular := -1
+	last := -1
+	if t.NumRequests > 0 {
+		regular = t.NumRequests / t.Workers
+		last = regular + t.NumRequests%t.Workers
+	}
+
 	for i = 0; i < t.Workers-1; i++ {
-		wrk := &worker{t, whole, NewRequestGenerator(t.Requests)}
+		wrk := &worker{t, regular, NewRequestGenerator(t.Requests)}
 		go func() {
 			wrk.runWorkerLoop()
 			t.wg.Done()
 		}()
 	}
-	wrk := &worker{t, whole + t.NumRequests%t.Workers, NewRequestGenerator(t.Requests)}
+	wrk := &worker{t, last, NewRequestGenerator(t.Requests)}
 	go func() {
 		wrk.runWorkerLoop()
 		t.wg.Done()
