@@ -83,6 +83,7 @@ func (t *Task) Run() {
 		wrk.runWorkerLoop()
 		t.wg.Done()
 	}()
+	t.wg.Wait()
 }
 
 func min(a, b int) int {

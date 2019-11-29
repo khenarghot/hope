@@ -32,7 +32,7 @@ func GetNewTransport(transport int, p interface{}) http.RoundTripper {
 			ServerName:         tp.Host,
 		},
 		MaxIdleConnsPerHost: min(tp.IdleConnections,
-			op.HopeConfig.Core.Connections),
+			op.HopeConfig.Core.Workers),
 		DisableCompression: true,
 		DisableKeepAlives:  true,
 		Proxy:              nil,
