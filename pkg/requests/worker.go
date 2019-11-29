@@ -21,7 +21,7 @@ func (w *worker) singleRequest(r *Request) error {
 	mds := md5.New()
 
 	if e != nil {
-		w.Task.Collector.Add(&Meshure{e, 0, s, t.Sub(s), resp.ContentLength, nil})
+		w.Task.Collector.Add(&Meshure{e, 0, s, t.Sub(s), 0, nil})
 		return e
 	}
 

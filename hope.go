@@ -64,15 +64,8 @@ func main() {
 		options.HopeConfig.Core.Duration = duration.Duration
 	}
 
-	fmt.Println(options.HopeConfig.Core, options.HopeConfig.Host, options.HopeConfig.Scripts[0])
-
 	if options.HopeConfig.Core.Workers == 0 {
 		fmt.Fprintf(os.Stderr, "Need some workers in core:workers\n")
-		os.Exit(2)
-	}
-
-	if options.HopeConfig.Core.Requests == 0 {
-		fmt.Fprintf(os.Stderr, "Need some connections in core:connections\n")
 		os.Exit(2)
 	}
 
@@ -88,7 +81,8 @@ func main() {
 		os.Exit(2)
 	}
 
-	task := requests.NewTask(requests.NewDefaultCollectot(), transport,
+	cl := requests.NewDefaultCollectot()
+	task := requests.NewTask(cl, transport,
 		req, 0, options.HopeConfig.Core.Workers, options.HopeConfig.Core.Requests, time.Second)
 
 	task.Init()
@@ -107,6 +101,9 @@ func main() {
 		}()
 	}
 	task.Run()
+
+	fmt.Println(task.Report().String())
+
 }
 
 func CompileRequests(host *options.ConfigHost,

@@ -18,6 +18,8 @@ type Collector interface {
 
 	Start()
 	Stop()
+
+	Report() *Report
 }
 
 type DefaultCollector struct {
@@ -36,6 +38,43 @@ type DefaultCollector struct {
 	Errors        map[string]int
 }
 
+func (cl *DefaultCollector) Report() *Report {
+	if cl.Count == 0 {
+		return nil
+	}
+
+	report := &Report{}
+	report.Count = cl.Count
+	report.Rps = (int64(cl.Count) * int64(time.Second)) / int64(cl.Duration)
+	report.DataSize = cl.TotalSize
+	report.Duration = cl.Duration
+	report.Start = cl.StartTime
+	report.RawDuration = cl.TotalDuration
+	report.AvgDuration = cl.TotalDuration / time.Duration(cl.Count)
+	report.AvgSize = int64(cl.TotalSize) / int64(cl.Count)
+	report.Slowest = cl.Slowest
+	report.Fastest = cl.Fastest
+
+	ok := 0
+	ko := 0
+	for cd, cn := range cl.Codes {
+		if cd > 199 && cd < 400 {
+			ok += cn
+		} else {
+			ko += cn
+		}
+	}
+	errs := 0
+	for _, cnt := range cl.Errors {
+		errs += cnt
+	}
+	report.OkResponse = ok
+	report.OverResponse = ko
+	report.Errors = errs
+
+	return report
+}
+
 var BeginOfTimes time.Time = time.Unix(0, 0)
 
 func NewDefaultCollectot() *DefaultCollector {
@@ -47,6 +86,7 @@ func NewDefaultCollectot() *DefaultCollector {
 		StartTime: BeginOfTimes,
 		Codes:     make(map[int]int, 1),
 		Errors:    make(map[string]int),
+		Fastest:   time.Hour,
 	}
 
 	return c
