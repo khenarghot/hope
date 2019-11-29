@@ -9,6 +9,7 @@ type Meshure struct {
 	StatusCode int
 	Start      time.Time
 	Duration   time.Duration
+	Size       int64
 	Sum        []byte
 }
 
@@ -27,6 +28,12 @@ type DefaultCollector struct {
 	Duration  time.Duration
 	StartTime time.Time
 	// Здесь будут поля для статистики, но потом
+	TotalSize     int64
+	TotalDuration time.Duration
+	Slowest       time.Duration
+	Fastest       time.Duration
+	Codes         map[int]int
+	Errors        map[string]int
 }
 
 var BeginOfTimes time.Time = time.Unix(0, 0)
@@ -38,6 +45,8 @@ func NewDefaultCollectot() *DefaultCollector {
 		Count:     0,
 		Duration:  time.Duration(0),
 		StartTime: BeginOfTimes,
+		Codes:     make(map[int]int, 1),
+		Errors:    make(map[string]int),
 	}
 
 	return c
@@ -57,6 +66,19 @@ func (c *DefaultCollector) Start() {
 					c.StartTime = m.Start
 				} else {
 					c.Duration = time.Now().Sub(c.StartTime)
+				}
+				if m.Error != nil {
+					c.Errors[m.Error.Error()]++
+					continue
+				}
+				c.Codes[m.StatusCode]++
+				c.TotalSize += m.Size
+				c.TotalDuration += m.Duration
+				if c.Slowest < m.Duration {
+					c.Slowest = m.Duration
+				}
+				if c.Fastest > m.Duration {
+					c.Fastest = m.Duration
 				}
 			} else {
 				c.done <- nil

@@ -9,9 +9,9 @@ func TestDefaultCollector(t *testing.T) {
 	col := NewDefaultCollectot()
 
 	col.Start()
-	col.Add(&Meshure{nil, 200, time.Now(), time.Duration(5), nil})
-	col.Add(&Meshure{nil, 200, time.Now(), time.Duration(10), nil})
-	col.Add(&Meshure{nil, 200, time.Now(), time.Duration(15), nil})
+	col.Add(&Meshure{nil, 200, time.Now(), time.Duration(5), 0, nil})
+	col.Add(&Meshure{nil, 200, time.Now(), time.Duration(10), 0, nil})
+	col.Add(&Meshure{nil, 200, time.Now(), time.Duration(15), 0, nil})
 	col.Stop()
 
 	if col.Count != 3 {

@@ -21,12 +21,12 @@ func (w *worker) singleRequest(r *Request) error {
 	mds := md5.New()
 
 	if e != nil {
-		w.Task.Collector.Add(&Meshure{e, 0, s, t.Sub(s), nil})
+		w.Task.Collector.Add(&Meshure{e, 0, s, t.Sub(s), resp.ContentLength, nil})
 		return e
 	}
 
 	if n, e := io.CopyN(mds, resp.Body, resp.ContentLength); e != nil || n != resp.ContentLength {
-		w.Task.Collector.Add(&Meshure{e, resp.StatusCode, s, t.Sub(s), nil})
+		w.Task.Collector.Add(&Meshure{e, resp.StatusCode, s, t.Sub(s), resp.ContentLength, nil})
 		return e
 	}
 
@@ -34,6 +34,7 @@ func (w *worker) singleRequest(r *Request) error {
 		resp.StatusCode,
 		s,
 		t.Sub(s),
+		resp.ContentLength,
 		mds.Sum(nil)})
 	return nil
 }
