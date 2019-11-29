@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -21,33 +22,46 @@ func main() {
 	}
 
 	// TODO: Добавить опции для генерации дефолного конфига и прочей билиберды
-	var timeFlag duration = time.Duration{0}
+	var duration timeFlag = timeFlag{time.Duration(0)}
 	workers := flag.Int("workers", 0, "number of clients")
 	reqNum := flag.Int("requests", 0, "number of requests pass to the clent")
-	flag.Val(&duration, "d", "total test duration")
-
+	mktemplate := flag.Bool("generate", false, "generate template file for load")
+	flag.Var(&duration, "d", "total test duration")
 	flag.Parse()
+
+	if *mktemplate {
+		if len(flag.Args()) > 0 {
+			if e := ioutil.WriteFile(flag.Args()[0], loadTemplate, 0644); e != nil {
+				fmt.Fprintf(os.Stderr, "Failed write template to %s: %s",
+					flag.Args()[0], e.Error())
+				os.Exit(1)
+			}
+		} else {
+			os.Stdout.Write(loadTemplate)
+		}
+		os.Exit(0)
+	}
+
 	if len(flag.Args()) != 1 {
 		fmt.Fprintf(os.Stderr, "Wrong number of arguments %d\n", len(flag.Args()))
 		flag.Usage()
 		os.Exit(1)
 	}
-
 	if e := options.LoadConfigFromFile(flag.Args()[0]); e != nil {
 		fmt.Fprintf(os.Stderr, "Failed parse config file: %s\n", e.Error())
 		os.Exit(2)
 	}
-	if workers > 0 {
-		options.HopeConfig.Core.Workers = workers
+	if *workers > 0 {
+		options.HopeConfig.Core.Workers = *workers
 	}
-	if reqNum != 0 {
-		if reqNum < 0 {
+	if *reqNum != 0 {
+		if *reqNum < 0 {
 			options.HopeConfig.Core.Requests = 0
 		}
-		options.HopeConfig.Core.Requests = reqNum
+		options.HopeConfig.Core.Requests = *reqNum
 	}
-	if duration != time.Duration(0) {
-		options.HopeConfig.Core.Duration = duration
+	if duration.Duration != time.Duration(0) {
+		options.HopeConfig.Core.Duration = duration.Duration
 	}
 
 	fmt.Println(options.HopeConfig.Core, options.HopeConfig.Host, options.HopeConfig.Scripts[0])
@@ -134,7 +148,7 @@ type timeFlag struct {
 	time.Duration
 }
 
-func (t *timeFlag) String() {
+func (t *timeFlag) String() string {
 	return t.Duration.String()
 }
 
@@ -142,3 +156,58 @@ func (t *timeFlag) Set(s string) (e error) {
 	t.Duration, e = time.ParseDuration(s)
 	return e
 }
+
+var loadTemplate []byte = []byte(`
+# Бзовые настройки. Могут быть опредеены через командную строку
+core:
+  # Число одновременных запросов должно быть определено или тут или в
+  # командной строке
+  workers: 80
+
+  # Общее число запросов, после которого нужно остановиться. Если 0 то
+  # не остановиться никогда
+  #requests: 1000
+
+  # Длительность теста. Тест завершитьс по прошествии этого времени,
+  # даже если не все запросывыполнены. Если не устанавливать то
+  # завершиться лишь по исполнении всех запросов.
+  #duration: 5m10s
+
+# Общая настройка узла
+host:
+  # Адрес испытываемого узла (Обязателен)
+  addr: 127.0.0.1
+
+  # Используемы порт (80 по умолчанию)
+  #port: 80
+
+  # Потокол (HTTP/HTTP2/HTTPS/HTTPS2) (HTTP по умолчанию)
+  #protocol: HTTP
+
+  # Для хоста может быть определен заголовк как и для любой другой части
+  #header:
+  #  - name: Content-Type
+  #    value: text/mediaplaylist
+  #  - name: X-User-Token
+  #    value: e04ce87c-74a9-4431-a829-4635f53583f3
+
+# Сценари для исполннения нагрузки
+scripts:
+  - name: af5e6e9b-a626-45b3-8f7f-45f999531935
+    header:
+      - name: X-User-Token
+	value: e04ce87c-74a9-4431-a829-4635f53583f3
+    requests:
+      - resource: /auth
+	# Метод для реусурса. по умолчанию Get
+	method: POST
+	# base64 кодированное тело запроса
+	body: VVNFUjpQQVNTV09SRA==
+	header:
+	- name: Content-Type
+	  value: text/plain
+      - resource: /play/channel/variant.m3u8
+      - resource: /play/channel/playlist.m3u8
+
+
+`)
