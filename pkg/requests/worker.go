@@ -26,7 +26,8 @@ func (w *worker) singleRequest(r *Request) error {
 	}
 
 	if n, e := io.CopyN(mds, resp.Body, resp.ContentLength); e != nil || n != resp.ContentLength {
-		w.Task.Collector.Add(&Meshure{e, resp.StatusCode, s, t.Sub(s), resp.ContentLength, nil})
+		// Гассим нерабочие реквесты
+		w.Task.Collector.Add(&Meshure{nil, resp.StatusCode, s, t.Sub(s), resp.ContentLength, nil})
 		return e
 	}
 
