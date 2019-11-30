@@ -23,9 +23,11 @@ func main() {
 
 	// TODO: Добавить опции для генерации дефолного конфига и прочей билиберды
 	var duration timeFlag = timeFlag{time.Duration(0)}
+	var timeout timeFlag = timeFlag{time.Second}
 	workers := flag.Int("workers", 0, "number of clients")
 	reqNum := flag.Int("requests", 0, "number of requests pass to the clent")
 	mktemplate := flag.Bool("generate", false, "generate template file for load")
+	flag.Var(&timeout, "tmax", "Request timeout")
 	flag.Var(&duration, "d", "total test duration")
 	flag.Parse()
 
@@ -83,7 +85,8 @@ func main() {
 
 	cl := requests.NewDefaultCollectot()
 	task := requests.NewTask(cl, transport,
-		req, 0, options.HopeConfig.Core.Workers, options.HopeConfig.Core.Requests, time.Second)
+		req, 0, options.HopeConfig.Core.Workers,
+		options.HopeConfig.Core.Requests, timeout.Duration)
 
 	task.Init()
 
