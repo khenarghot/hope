@@ -11,6 +11,7 @@ type Request struct {
 	http.Header
 	Body []byte
 	Rate int
+	Skip int
 }
 
 type RequestGenerator func() *Request
@@ -29,26 +30,70 @@ func NewRequest(url string, method string, header http.Header,
 	for k, s := range header {
 		r.Header[k] = append([]string(nil), s...)
 	}
-	r.Rate = rate
+	r.Rate = 1
+	if rate > 0 {
+		r.Rate = rate
+	}
+	r.Skip = 0
 
 	return r, nil
 }
 
-func NewRequestGenerator(s [][]*Request) RequestGenerator {
+func getStartRequest(sc [][]*Request, offset int) (s, r int) {
+	if offset == 0 {
+		return 0, 0
+	}
+	total := 0
+	for _, sr := range sc {
+		total += len(sr)
+	}
+	if total == 0 {
+		panic("Empty request is bad idea")
+	}
+	offset = offset % total
+	cur := 0
+	s, r = 0, 0
+	for _, sr := range sc {
+		if len(sr)+cur <= offset {
+			s++
+			cur += len(sr)
+		} else {
+			break
+		}
+	}
+	r = offset - cur
+	return
+}
+
+func NewRequestGenerator(s [][]*Request, offset int) RequestGenerator {
 	scripts := s
-	sid := 0
-	rid := 0
+	sid, rid := getStartRequest(s, offset)
 	count := s[sid][rid].Rate
 
 	rg := func() *Request {
-		if count == 0 {
-			rid += 1
-			if rid == len(scripts[sid]) {
-				rid = 0
-				sid += 1
+		nextId := func(s, r int) (int, int) {
+			r++
+			if r == len(scripts[s]) {
+				r = 0
+				s += 1
 			}
-			if sid == len(scripts) {
-				sid = 0
+			if s == len(scripts) {
+				s = 0
+			}
+			if r < 0 {
+				panic("wrong rid")
+			}
+			return s, r
+		}
+
+		if count == 0 {
+			for {
+				sid, rid = nextId(sid, rid)
+				if scripts[sid][rid].Skip > 0 {
+					scripts[sid][rid].Skip--
+				} else {
+					break
+				}
 			}
 			count = scripts[sid][rid].Rate
 		}

@@ -10,7 +10,6 @@ type Meshure struct {
 	Start      time.Time
 	Duration   time.Duration
 	Size       int64
-	Sum        []byte
 }
 
 type Collector interface {

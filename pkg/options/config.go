@@ -172,7 +172,7 @@ func MergeHttpHeaders(headers ...http.Header) http.Header {
 	h := http.Header{}
 
 	for _, header := range headers {
-		for k, _ := range header {
+		for k := range header {
 			h.Set(k, header.Get(k))
 		}
 	}

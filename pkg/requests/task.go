@@ -77,14 +77,17 @@ func (t *Task) Run() {
 		last = regular + t.NumRequests%t.Workers
 	}
 
+	//  Пофиксать распредедение чтобы хватало всем воркером (а
+	//  точнее чтобы если по одному реквесту на воркера — не
+	//  запускалось =)
 	for i = 0; i < t.Workers-1; i++ {
-		wrk := &worker{t, regular, NewRequestGenerator(t.Requests)}
+		wrk := &worker{t, regular, NewRequestGenerator(t.Requests, 0)}
 		go func() {
 			wrk.runWorkerLoop()
 			t.wg.Done()
 		}()
 	}
-	wrk := &worker{t, last, NewRequestGenerator(t.Requests)}
+	wrk := &worker{t, last, NewRequestGenerator(t.Requests, 0)}
 	go func() {
 		wrk.runWorkerLoop()
 		t.wg.Done()

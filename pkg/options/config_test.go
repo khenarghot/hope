@@ -93,7 +93,6 @@ func TestConfigRequestPartial(t *testing.T) {
 	}
 }
 
-
 var scriptConfig = []byte(`
 name: 631e8c62-419e-46a2-b6cc-c3862c150843
 header:

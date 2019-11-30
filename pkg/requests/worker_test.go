@@ -75,7 +75,7 @@ func TestRunWorkerLoop(t *testing.T) {
 	wrk := &worker{
 		Task:        task,
 		numRequests: 5,
-		nextRequest: NewRequestGenerator(task.Requests),
+		nextRequest: NewRequestGenerator(task.Requests, 0),
 	}
 
 	wrk.runWorkerLoop()
