@@ -44,15 +44,24 @@ func (cl *DefaultCollector) Report() *Report {
 
 	report := &Report{}
 	report.Count = cl.Count
-	report.Rps = (int64(cl.Count) * int64(time.Second)) / int64(cl.Duration)
+
 	report.DataSize = cl.TotalSize
 	report.Duration = cl.Duration
 	report.Start = cl.StartTime
 	report.RawDuration = cl.TotalDuration
-	report.AvgDuration = cl.TotalDuration / time.Duration(cl.Count)
-	report.AvgSize = int64(cl.TotalSize) / int64(cl.Count)
+	if cl.Duration != time.Duration(0) {
+		report.Rps = (int64(cl.Count) * int64(time.Second)) / int64(cl.Duration)
+		report.AvgDuration = cl.TotalDuration / time.Duration(cl.Count)
+	}
+
+	if cl.Count != 0 {
+		report.AvgSize = int64(cl.TotalSize) / int64(cl.Count)
+	}
 	report.Slowest = cl.Slowest
 	report.Fastest = cl.Fastest
+	if cl.Fastest > cl.Duration {
+		report.Fastest = time.Duration(0)
+	}
 
 	ok := 0
 	ko := 0
@@ -67,9 +76,15 @@ func (cl *DefaultCollector) Report() *Report {
 	for _, cnt := range cl.Errors {
 		errs += cnt
 	}
+
 	report.OkResponse = ok
 	report.OverResponse = ko
 	report.Errors = errs
+	report.NotFoundResponse = 0
+	ff, have := cl.Codes[404]
+	if have {
+		report.NotFoundResponse = ff
+	}
 
 	return report
 }

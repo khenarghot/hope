@@ -10,10 +10,16 @@ import (
 )
 
 // HopeConfig настройки приложения
-var HopeConfig struct {
+var HopeConfig = struct {
 	Core    *ConfigCore     `yaml:"core"`
 	Host    *ConfigHost     `yaml:"host"`
 	Scripts []*ConfigScript `yaml:"scripts"`
+}{
+	Core: &ConfigCore{
+		Workers:  13,
+		Requests: 8000,
+		StatUrl:  "http://46.61.193.124/usage/statistic.json",
+	},
 }
 
 // ConfigCore базовые настройки теста
@@ -21,6 +27,7 @@ type ConfigCore struct {
 	Workers  int           `yaml:"workers"`
 	Requests int           `yaml:"connections"`
 	Duration time.Duration `yaml:"duration"`
+	StatUrl  string        `yaml:"stat_url"`
 }
 
 // ConfigHost описание обстреливаемого сервера

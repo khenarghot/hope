@@ -19,9 +19,10 @@ type Report struct {
 	Slowest     time.Duration `yaml:"slowest_request"`
 	Fastest     time.Duration `yaml:"fastest_request"`
 
-	OkResponse   int `yaml:"ok_response_count"`
-	OverResponse int `yaml:"not_ok_response_count"`
-	Errors       int `yaml:"errors_count"`
+	OkResponse       int `yaml:"ok_response_count"`
+	NotFoundResponse int `yaml:"404_response_count"`
+	OverResponse     int `yaml:"not_ok_response_count"`
+	Errors           int `yaml:"errors_count"`
 }
 
 var (
@@ -38,6 +39,7 @@ Summary:
 
   20x-30x responses:     {{ .OkResponse }}
   Non 20x-30x responses: {{ .OverResponse }}
+  404 respones:          {{ .NotFoundResponse }}
  
   Errors: {{ .Errors }}
 `

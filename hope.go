@@ -105,8 +105,24 @@ func main() {
 	}
 	task.Run()
 
+	report := task.Report()
+	time.Sleep(time.Second)
 	fmt.Println(task.Report().String())
-
+	origRequests, err := GetOriginReqCountURL(
+		options.HopeConfig.Core.StatUrl,
+		options.HopeConfig.Host.Address,
+		int(report.Start.Unix()-10800),
+		int(report.Start.Unix()+int64(report.Duration.Seconds())-10800))
+	if err == nil {
+		if origRequests != 0 {
+			fmt.Printf("  Requests to origin: %d", origRequests)
+		} else {
+			fmt.Printf("Self contained scripts\n")
+		}
+	} else {
+		fmt.Printf("Can't get statistic for statistic host %s: %s\n",
+			options.HopeConfig.Core.StatUrl, err.Error())
+	}
 }
 
 func CompileRequests(host *options.ConfigHost,
