@@ -115,7 +115,7 @@ func main() {
 		int(report.Start.Unix()+int64(report.Duration.Seconds())-10800))
 	if err == nil {
 		if origRequests != 0 {
-			fmt.Printf("  Requests to origin: %d", origRequests)
+			fmt.Printf("  Requests to origin: %d\n", origRequests)
 		} else {
 			fmt.Printf("Self contained scripts\n")
 		}
