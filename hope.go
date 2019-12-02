@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/khenarghot/hope/pkg/options"
+	"github.com/khenarghot/hope/options"
 	"github.com/khenarghot/hope/pkg/requests"
 )
 

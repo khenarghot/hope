@@ -2,10 +2,12 @@ package requests
 
 import (
 	"crypto/tls"
-	op "github.com/khenarghot/hope/pkg/options"
 	"golang.org/x/net/http2"
 	"net/http"
 )
+
+// MaxIdleConnections масксимально допутчимое число соединений. 
+var MaxIdleConnections = 1000
 
 const (
 	// TransportHTTP — configure HTTP transport
@@ -31,8 +33,7 @@ func GetNewTransport(transport int, p interface{}) http.RoundTripper {
 			InsecureSkipVerify: true,
 			ServerName:         tp.Host,
 		},
-		MaxIdleConnsPerHost: min(tp.IdleConnections,
-			op.HopeConfig.Core.Workers),
+		MaxIdleConnsPerHost: min(tp.IdleConnections, MaxIdleConnections),
 		DisableCompression: true,
 		DisableKeepAlives:  true,
 		Proxy:              nil,

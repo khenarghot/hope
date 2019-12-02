@@ -18,7 +18,7 @@ var HopeConfig = struct {
 	Core: &ConfigCore{
 		Workers:  13,
 		Requests: 8000,
-		StatUrl:  "http://46.61.193.124/usage/statistic.json",
+		StatUrl:  "http://127.0.0.1/usage/statistic.json",
 	},
 }
 
